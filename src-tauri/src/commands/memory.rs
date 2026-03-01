@@ -3,19 +3,58 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
-fn memory_dir(category: &str) -> std::path::PathBuf {
-    let base = super::openclaw_dir();
-    match category {
-        "memory" => base.join("workspace").join("memory"),
-        "archive" => base.join("workspace-memory"),
-        "core" => base.join("workspace"),
-        _ => base.join("workspace").join("memory"),
+/// 根据 agent_id 获取 workspace 路径
+/// 调用 openclaw agents list --json 解析
+fn agent_workspace(agent_id: &str) -> Result<PathBuf, String> {
+    let output = std::process::Command::new("openclaw")
+        .args(["agents", "list", "--json"])
+        .output()
+        .map_err(|e| format!("执行 openclaw 失败: {e}"))?;
+
+    if !output.status.success() {
+        return Err("获取 Agent 列表失败".into());
     }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let agents: serde_json::Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("解析 JSON 失败: {e}"))?;
+
+    if let Some(arr) = agents.as_array() {
+        for a in arr {
+            if a.get("id").and_then(|v| v.as_str()) == Some(agent_id) {
+                if let Some(ws) = a.get("workspace").and_then(|v| v.as_str()) {
+                    return Ok(PathBuf::from(ws));
+                }
+            }
+        }
+    }
+
+    Err(format!("Agent「{agent_id}」不存在或无 workspace"))
+}
+
+fn memory_dir_for_agent(agent_id: &str, category: &str) -> Result<PathBuf, String> {
+    let ws = agent_workspace(agent_id)?;
+    Ok(match category {
+        "memory" => ws.join("memory"),
+        "archive" => {
+            // 归档目录在 agent workspace 同级的 workspace-memory
+            // 对 main: ~/.openclaw/workspace-memory
+            // 对其他: ~/.openclaw/agents/{id}/workspace-memory
+            if let Some(parent) = ws.parent() {
+                parent.join("workspace-memory")
+            } else {
+                ws.join("memory-archive")
+            }
+        }
+        "core" => ws.clone(),
+        _ => ws.join("memory"),
+    })
 }
 
 #[tauri::command]
-pub fn list_memory_files(category: String) -> Result<Vec<String>, String> {
-    let dir = memory_dir(&category);
+pub fn list_memory_files(category: String, agent_id: Option<String>) -> Result<Vec<String>, String> {
+    let aid = agent_id.as_deref().unwrap_or("main");
+    let dir = memory_dir_for_agent(aid, &category)?;
     if !dir.exists() {
         return Ok(vec![]);
     }
@@ -56,23 +95,25 @@ fn collect_files(
 }
 
 #[tauri::command]
-pub fn read_memory_file(path: String) -> Result<String, String> {
-    // 安全检查：路径不能包含 ..、绝对路径、空字节
+pub fn read_memory_file(path: String, agent_id: Option<String>) -> Result<String, String> {
     if path.contains("..") || path.starts_with('/') || path.contains('\0') {
         return Err("非法路径".to_string());
     }
 
-    // 尝试在各个记忆目录下查找
+    let aid = agent_id.as_deref().unwrap_or("main");
     let candidates = [
-        memory_dir("memory").join(&path),
-        memory_dir("archive").join(&path),
-        memory_dir("core").join(&path),
+        memory_dir_for_agent(aid, "memory"),
+        memory_dir_for_agent(aid, "archive"),
+        memory_dir_for_agent(aid, "core"),
     ];
 
-    for candidate in &candidates {
-        if candidate.exists() {
-            return fs::read_to_string(candidate)
-                .map_err(|e| format!("读取失败: {e}"));
+    for c in &candidates {
+        if let Ok(dir) = c {
+            let full = dir.join(&path);
+            if full.exists() {
+                return fs::read_to_string(&full)
+                    .map_err(|e| format!("读取失败: {e}"));
+            }
         }
     }
 
@@ -80,22 +121,16 @@ pub fn read_memory_file(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn write_memory_file(path: String, content: String, category: Option<String>) -> Result<(), String> {
-    // 安全检查：路径不能包含 ..、绝对路径、空字节
+pub fn write_memory_file(path: String, content: String, category: Option<String>, agent_id: Option<String>) -> Result<(), String> {
     if path.contains("..") || path.starts_with('/') || path.contains('\0') {
         return Err("非法路径".to_string());
     }
 
+    let aid = agent_id.as_deref().unwrap_or("main");
     let cat = category.unwrap_or_else(|| "memory".to_string());
-    let base = match cat.as_str() {
-        "memory" => super::openclaw_dir().join("workspace").join("memory"),
-        "archive" => super::openclaw_dir().join("workspace-memory"),
-        "core" => super::openclaw_dir().join("workspace"),
-        _ => return Err(format!("未知分类: {cat}")),
-    };
+    let base = memory_dir_for_agent(aid, &cat)?;
 
     let full_path = base.join(&path);
-    // 确保父目录存在
     if let Some(parent) = full_path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {e}"))?;
     }
@@ -103,22 +138,25 @@ pub fn write_memory_file(path: String, content: String, category: Option<String>
 }
 
 #[tauri::command]
-pub fn delete_memory_file(path: String) -> Result<(), String> {
-    // 安全检查：路径不能包含 ..、绝对路径、空字节
+pub fn delete_memory_file(path: String, agent_id: Option<String>) -> Result<(), String> {
     if path.contains("..") || path.starts_with('/') || path.contains('\0') {
         return Err("非法路径".to_string());
     }
 
+    let aid = agent_id.as_deref().unwrap_or("main");
     let candidates = [
-        memory_dir("memory").join(&path),
-        memory_dir("archive").join(&path),
-        memory_dir("core").join(&path),
+        memory_dir_for_agent(aid, "memory"),
+        memory_dir_for_agent(aid, "archive"),
+        memory_dir_for_agent(aid, "core"),
     ];
 
-    for candidate in &candidates {
-        if candidate.exists() {
-            return fs::remove_file(candidate)
-                .map_err(|e| format!("删除失败: {e}"));
+    for c in &candidates {
+        if let Ok(dir) = c {
+            let full = dir.join(&path);
+            if full.exists() {
+                return fs::remove_file(&full)
+                    .map_err(|e| format!("删除失败: {e}"));
+            }
         }
     }
 
@@ -126,8 +164,9 @@ pub fn delete_memory_file(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn export_memory_zip(category: String) -> Result<String, String> {
-    let dir = memory_dir(&category);
+pub fn export_memory_zip(category: String, agent_id: Option<String>) -> Result<String, String> {
+    let aid = agent_id.as_deref().unwrap_or("main");
+    let dir = memory_dir_for_agent(aid, &category)?;
     if !dir.exists() {
         return Err("目录不存在".to_string());
     }

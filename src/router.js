@@ -39,6 +39,16 @@ async function loadRoute() {
   }
 
   _contentEl.innerHTML = ''
+
+  // 显示加载动画
+  const loader_el = document.createElement('div')
+  loader_el.className = 'page-loader'
+  loader_el.innerHTML = `
+    <div class="page-loader-spinner"></div>
+    <div class="page-loader-text">加载中...</div>
+  `
+  _contentEl.appendChild(loader_el)
+
   const mod = await loader()
 
   // 如果加载期间路由又变了，丢弃本次结果
@@ -47,6 +57,8 @@ async function loadRoute() {
   const page = mod.render ? await mod.render() : mod.default ? await mod.default() : mod
   if (thisLoad !== _loadId) return
 
+  // 移除加载动画，插入页面内容
+  _contentEl.innerHTML = ''
   if (typeof page === 'string') {
     _contentEl.innerHTML = page
   } else if (page instanceof HTMLElement) {

@@ -11,12 +11,16 @@ import './style/reset.css'
 import './style/layout.css'
 import './style/components.css'
 import './style/pages.css'
+import './style/chat.css'
+import './style/agents.css'
 
 // 注册页面路由（懒加载）
 registerRoute('/dashboard', () => import('./pages/dashboard.js'))
+registerRoute('/chat', () => import('./pages/chat.js'))
 registerRoute('/services', () => import('./pages/services.js'))
 registerRoute('/logs', () => import('./pages/logs.js'))
 registerRoute('/models', () => import('./pages/models.js'))
+registerRoute('/agents', () => import('./pages/agents.js'))
 registerRoute('/gateway', () => import('./pages/gateway.js'))
 registerRoute('/memory', () => import('./pages/memory.js'))
 registerRoute('/extensions', () => import('./pages/extensions.js'))

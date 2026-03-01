@@ -15,10 +15,24 @@ export async function render() {
   const page = document.createElement('div')
   page.className = 'page'
 
+  // 先获取 agent 列表
+  let agents = []
+  try {
+    agents = await api.listAgents()
+  } catch { agents = [{ id: 'main', identityName: '默认' }] }
+
+  const agentOptions = agents.map(a => {
+    const label = a.identityName ? a.identityName.split(',')[0].trim() : a.id
+    return `<option value="${a.id}">${a.id}${a.id !== label ? ' — ' + label : ''}</option>`
+  }).join('')
+
   page.innerHTML = `
     <div class="page-header">
       <h1 class="page-title">记忆文件</h1>
-      <p class="page-desc">管理 OpenClaw 工作记忆和归档文件</p>
+      <div class="page-actions" style="display:flex;align-items:center;gap:var(--space-sm)">
+        <label style="font-size:var(--font-size-sm);color:var(--text-tertiary)">Agent:</label>
+        <select class="form-input" id="agent-select" style="width:auto;min-width:140px">${agentOptions}</select>
+      </div>
     </div>
     <div class="tab-bar">
       ${CATEGORIES.map((c, i) => `<div class="tab${i === 0 ? ' active' : ''}" data-tab="${c.key}">${c.label}</div>`).join('')}
@@ -49,7 +63,15 @@ export async function render() {
     </div>
   `
 
-  const state = { category: 'memory', currentPath: null }
+  const state = { category: 'memory', currentPath: null, agentId: 'main' }
+
+  // Agent 切换
+  page.querySelector('#agent-select').onchange = (e) => {
+    state.agentId = e.target.value
+    state.currentPath = null
+    resetEditor(page)
+    loadFiles(page, state)
+  }
 
   // Tab 切换
   page.querySelectorAll('.tab').forEach(tab => {
@@ -79,7 +101,7 @@ export async function render() {
       onConfirm: async ({ filename }) => {
         if (!filename) return
         try {
-          await api.writeMemoryFile(filename, `# ${filename}\n\n`, state.category)
+          await api.writeMemoryFile(filename, `# ${filename}\n\n`, state.category, state.agentId)
           toast(`已创建 ${filename}`, 'success')
           loadFiles(page, state)
         } catch (e) {
@@ -97,7 +119,7 @@ export async function render() {
     const yes = await showConfirm(`确定删除 ${name}？`)
     if (!yes) return
     try {
-      await api.deleteMemoryFile(state.currentPath)
+      await api.deleteMemoryFile(state.currentPath, state.agentId)
       toast(`已删除 ${name}`, 'success')
       state.currentPath = null
       resetEditor(page)
@@ -122,7 +144,7 @@ async function loadFiles(page, state) {
   tree.innerHTML = '<div style="color:var(--text-tertiary);padding:12px">加载中...</div>'
 
   try {
-    const files = await api.listMemoryFiles(state.category)
+    const files = await api.listMemoryFiles(state.category, state.agentId)
     if (!files || !files.length) {
       tree.innerHTML = '<div style="color:var(--text-tertiary);padding:12px">暂无文件</div>'
       return
@@ -170,7 +192,7 @@ async function loadFileContent(page, state) {
   btnPreview.textContent = '预览'
 
   try {
-    const content = await api.readMemoryFile(state.currentPath)
+    const content = await api.readMemoryFile(state.currentPath, state.agentId)
     editor.value = content || ''
     editor.disabled = false
     btnSave.disabled = false
@@ -202,7 +224,7 @@ async function saveFile(page, state) {
   if (!state.currentPath) return
   const content = page.querySelector('#file-editor').value
   try {
-    await api.writeMemoryFile(state.currentPath, content)
+    await api.writeMemoryFile(state.currentPath, content, null, state.agentId)
     toast('文件已保存', 'success')
   } catch (e) {
     toast('保存失败: ' + e, 'error')
@@ -273,7 +295,7 @@ async function downloadCurrentFile(page, state) {
 
 async function exportZip(state) {
   try {
-    const zipPath = await api.exportMemoryZip(state.category)
+    const zipPath = await api.exportMemoryZip(state.category, state.agentId)
     const label = CATEGORIES.find(c => c.key === state.category)?.label || state.category
     // 尝试用 Tauri shell open 打开文件所在目录
     try {

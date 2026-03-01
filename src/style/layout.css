@@ -124,6 +124,13 @@
   margin-bottom: var(--space-xl);
 }
 
+.page-header:has(.page-actions) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
 .page-title {
   font-size: var(--font-size-2xl);
   font-weight: 700;

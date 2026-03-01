@@ -30,7 +30,7 @@ function mockInvoke(cmd, args) {
         mode: 'replace',
         providers: {
           'newapi-claude': {
-            baseUrl: 'http://192.168.1.14:30080/v1',
+            baseUrl: 'http://localhost:30080/v1',
             api: 'openai-completions',
             models: [
               { id: 'claude-opus-4-6' },
@@ -115,9 +115,9 @@ function mockInvoke(cmd, args) {
       installed: true, version: 'cftunnel 0.7.0', running: true,
       tunnel_name: 'mac-home', pid: 73325,
       routes: [
-        { name: 'clawapp', domain: 'chat.qrj.ai', service: 'http://localhost:3210' },
-        { name: 'newapi', domain: 'newapi.qrj.ai', service: 'http://localhost:30080' },
-        { name: 'webhook', domain: 'webhook.qrj.ai', service: 'http://localhost:9801' },
+        { name: 'webapp', domain: 'app.example.com', service: 'http://localhost:3210' },
+        { name: 'api', domain: 'api.example.com', service: 'http://localhost:30080' },
+        { name: 'webhook', domain: 'hook.example.com', service: 'http://localhost:9801' },
       ],
     }),
     cftunnel_action: () => true,
@@ -151,16 +151,23 @@ export const api = {
   testModel: (baseUrl, apiKey, modelId) => invoke('test_model', { baseUrl, apiKey, modelId }),
   listRemoteModels: (baseUrl, apiKey) => invoke('list_remote_models', { baseUrl, apiKey }),
 
+  // Agent 管理
+  listAgents: () => invoke('list_agents'),
+  addAgent: (name, model, workspace) => invoke('add_agent', { name, model, workspace: workspace || null }),
+  deleteAgent: (id) => invoke('delete_agent', { id }),
+  updateAgentIdentity: (id, name, emoji) => invoke('update_agent_identity', { id, name, emoji }),
+  backupAgent: (id) => invoke('backup_agent', { id }),
+
   // 日志
   readLogTail: (logName, lines = 100) => invoke('read_log_tail', { logName, lines }),
   searchLog: (logName, query, maxResults = 50) => invoke('search_log', { logName, query, maxResults }),
 
   // 记忆文件
-  listMemoryFiles: (category) => invoke('list_memory_files', { category }),
-  readMemoryFile: (path) => invoke('read_memory_file', { path }),
-  writeMemoryFile: (path, content, category) => invoke('write_memory_file', { path, content, category: category || 'memory' }),
-  deleteMemoryFile: (path) => invoke('delete_memory_file', { path }),
-  exportMemoryZip: (category) => invoke('export_memory_zip', { category }),
+  listMemoryFiles: (category, agentId) => invoke('list_memory_files', { category, agent_id: agentId || null }),
+  readMemoryFile: (path, agentId) => invoke('read_memory_file', { path, agent_id: agentId || null }),
+  writeMemoryFile: (path, content, category, agentId) => invoke('write_memory_file', { path, content, category: category || 'memory', agent_id: agentId || null }),
+  deleteMemoryFile: (path, agentId) => invoke('delete_memory_file', { path, agent_id: agentId || null }),
+  exportMemoryZip: (category, agentId) => invoke('export_memory_zip', { category, agent_id: agentId || null }),
 
   // 安装/部署
   checkInstallation: () => invoke('check_installation'),
@@ -179,4 +186,7 @@ export const api = {
   getCftunnelLogs: (lines = 20) => invoke('get_cftunnel_logs', { lines }),
   getClawappStatus: () => invoke('get_clawapp_status'),
   installCftunnel: () => invoke('install_cftunnel'),
+
+  // 设备密钥 + Gateway 握手
+  createConnectFrame: (nonce, gatewayToken) => invoke('create_connect_frame', { nonce, gatewayToken }),
 }

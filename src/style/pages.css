@@ -94,6 +94,9 @@
 }
 
 .config-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
   font-size: var(--font-size-lg);
   font-weight: 600;
   margin-bottom: var(--space-lg);
@@ -313,4 +316,125 @@
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-secondary);
+}
+
+/* Gateway 配置页 — 选项卡片 */
+.gw-option-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+.gw-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.gw-option-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-focus);
+}
+
+.gw-option-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-muted);
+}
+
+.gw-option-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.gw-option-card.selected .gw-option-icon {
+  background: var(--accent);
+  color: white;
+}
+
+.gw-option-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.gw-option-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.gw-option-title {
+  font-weight: 600;
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.gw-option-desc {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+/* Gateway — 高级选项折叠 */
+.gw-advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition-fast);
+}
+
+.gw-advanced-toggle:hover {
+  color: var(--text-primary);
+}
+
+.gw-advanced-toggle svg {
+  transition: transform var(--transition-fast);
+}
+
+.gw-advanced-toggle.open svg {
+  transform: rotate(180deg);
+}
+
+.gw-advanced-panel {
+  animation: fadeIn 200ms ease;
+}
+
+/* Gateway — 保存栏 */
+.gw-save-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border-secondary);
+}
+
+.gw-save-bar .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.gw-save-hint {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
 }

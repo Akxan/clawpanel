@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
+pub mod agent;
 pub mod config;
+pub mod device;
 pub mod extensions;
 pub mod logs;
 pub mod memory;

@@ -33,6 +33,7 @@ export async function render() {
     </div>
     <div class="config-section" id="backup-section">
       <div class="config-section-title">配置备份</div>
+      <div class="form-hint" style="margin-bottom:var(--space-sm)">备份范围：openclaw.json 主配置文件（含模型、Provider、Gateway 设置）。Agent 数据和记忆文件不在此备份范围内。</div>
       <div id="backup-actions" style="margin-bottom:var(--space-md)">
         <button class="btn btn-primary btn-sm" data-action="create-backup">创建备份</button>
       </div>

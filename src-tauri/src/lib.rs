@@ -1,7 +1,7 @@
 mod commands;
 mod models;
 
-use commands::{config, extensions, logs, memory, service};
+use commands::{agent, config, device, extensions, logs, memory, service};
 
 pub fn run() {
     tauri::Builder::default()
@@ -27,6 +27,8 @@ pub fn run() {
             config::uninstall_gateway,
             config::get_npm_registry,
             config::set_npm_registry,
+            // 设备密钥 + Gateway 握手
+            device::create_connect_frame,
             // 服务
             service::get_services_status,
             service::start_service,
@@ -47,6 +49,12 @@ pub fn run() {
             extensions::get_cftunnel_logs,
             extensions::get_clawapp_status,
             extensions::install_cftunnel,
+            // Agent 管理
+            agent::list_agents,
+            agent::add_agent,
+            agent::delete_agent,
+            agent::update_agent_identity,
+            agent::backup_agent,
         ])
         .run(tauri::generate_context!())
         .expect("启动 ClawPanel 失败");

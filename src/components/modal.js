@@ -81,7 +81,7 @@ export function showModal({ title, fields, onConfirm }) {
     return `
       <div class="form-group">
         <label class="form-label">${f.label}</label>
-        <input class="form-input" data-name="${f.name}" value="${escapeAttr(f.value)}" placeholder="${escapeAttr(f.placeholder)}">
+        <input class="form-input" data-name="${f.name}" value="${escapeAttr(f.value)}" placeholder="${escapeAttr(f.placeholder)}"${f.readonly ? ' readonly style="opacity:0.6;cursor:not-allowed"' : ''}>
         ${f.hint ? `<div class="form-hint">${f.hint}</div>` : ''}
       </div>`
   }).join('')
@@ -115,8 +115,10 @@ export function showModal({ title, fields, onConfirm }) {
         result[el.dataset.name] = el.value
       }
     })
-    overlay.remove()
-    onConfirm(result)
+    // 先调用回调，再移除 overlay，避免嵌套对话框时序问题
+    const callback = onConfirm
+    setTimeout(() => overlay.remove(), 0)
+    callback(result)
   }
 
   // 键盘事件：Enter 确认，Escape 关闭

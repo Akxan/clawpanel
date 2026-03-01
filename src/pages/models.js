@@ -235,14 +235,15 @@ function renderProviders(page, state) {
           <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
             <span style="font-size:var(--font-size-xs);color:var(--text-tertiary)">排序:</span>
             <select class="form-input" data-action="sort-models" style="padding:4px 8px;font-size:var(--font-size-xs);width:auto">
-              <option value="default" ${sortBy === 'default' ? 'selected' : ''}>默认顺序</option>
-              <option value="name-asc" ${sortBy === 'name-asc' ? 'selected' : ''}>名称 A-Z</option>
-              <option value="name-desc" ${sortBy === 'name-desc' ? 'selected' : ''}>名称 Z-A</option>
-              <option value="latency-asc" ${sortBy === 'latency-asc' ? 'selected' : ''}>延迟 低→高</option>
-              <option value="latency-desc" ${sortBy === 'latency-desc' ? 'selected' : ''}>延迟 高→低</option>
-              <option value="context-asc" ${sortBy === 'context-asc' ? 'selected' : ''}>上下文 小→大</option>
-              <option value="context-desc" ${sortBy === 'context-desc' ? 'selected' : ''}>上下文 大→小</option>
+              <option value="default">默认顺序 (拖拽调整)</option>
+              <option value="name-asc">名称 A-Z (固化到底层)</option>
+              <option value="name-desc">名称 Z-A (固化到底层)</option>
+              <option value="latency-asc">延迟 低→高 (固化到底层)</option>
+              <option value="latency-desc">延迟 高→低 (固化到底层)</option>
+              <option value="context-asc">上下文 小→大 (固化到底层)</option>
+              <option value="context-desc">上下文 大→小 (固化到底层)</option>
             </select>
+            <button class="btn btn-sm btn-secondary" data-action="apply-sort" style="display:none">保存当前排序</button>
           </div>
         </div>` : ''}
         <div class="provider-models">
@@ -285,8 +286,9 @@ function renderModelCards(providerKey, models, primary, search) {
     const testTime = m.lastTestAt ? formatTestTime(m.lastTestAt) : ''
     if (testTime) meta.push(testTime)
     return `
-      <div class="model-card" data-model-id="${id}" data-full="${full}"
-           style="background:${bgColor};border:1px solid ${borderColor};padding:10px 14px;border-radius:var(--radius-md);margin-bottom:8px;display:flex;align-items:center;gap:10px">
+      <div class="model-card" data-model-id="${id}" data-full="${full}" draggable="true"
+           style="background:${bgColor};border:1px solid ${borderColor};padding:10px 14px;border-radius:var(--radius-md);margin-bottom:8px;display:flex;align-items:center;gap:10px;cursor:grab">
+        <span style="color:var(--text-tertiary);cursor:grab;user-select:none;font-size:16px;padding-right:4px">⋮⋮</span>
         <input type="checkbox" class="model-checkbox" data-model-id="${id}" style="flex-shrink:0;cursor:pointer">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px">
@@ -343,6 +345,7 @@ async function undo(page, state) {
 
 // 自动保存（防抖 300ms）
 let _saveTimer = null
+let _batchTestAbort = null // 批量测试终止控制器
 function autoSave(state) {
   clearTimeout(_saveTimer)
   _saveTimer = setTimeout(() => doAutoSave(state), 300)
@@ -353,7 +356,7 @@ async function doAutoSave(state) {
     const primary = getCurrentPrimary(state.config)
     if (primary) applyDefaultModel(state)
     await api.writeOpenclawConfig(state.config)
-    try { await api.reloadGateway() } catch {}
+    // Gateway 会自动检测配置变化并热重载，无需手动 kickstart
     toast('已自动保存', 'success')
   } catch (e) {
     toast('自动保存失败: ' + e, 'error')
@@ -374,9 +377,77 @@ function bindProviderButtons(listEl, page, state) {
   // 绑定排序下拉框
   listEl.querySelectorAll('select[data-action="sort-models"]').forEach(select => {
     select.onchange = (e) => {
-      state.sortBy = e.target.value
-      renderProviders(page, state)
+      const val = e.target.value
+      const section = select.closest('[data-provider]')
+      if (!section) return
+      const providerKey = section.dataset.provider
+      const provider = state.config.models.providers[providerKey]
+
+      if (val === 'default') {
+        state.sortBy = 'default'
+        renderProviders(page, state)
+      } else {
+        // 将排序固化到底层数据并保存
+        pushUndo(state)
+        provider.models = sortModels(provider.models, val)
+        // 恢复下拉框显示 "默认顺序"，因为新顺序已经变成了默认顺序
+        state.sortBy = 'default'
+        renderProviders(page, state)
+        autoSave(state)
+        toast('排序已保存', 'success')
+      }
     }
+  })
+
+  // 绑定拖拽排序 (Drag & Drop)
+  listEl.querySelectorAll('.provider-models').forEach(container => {
+    let dragged = null
+    container.addEventListener('dragstart', e => {
+      dragged = e.target.closest('.model-card')
+      if (dragged) {
+        dragged.style.opacity = '0.5'
+        e.dataTransfer.effectAllowed = 'move'
+      }
+    })
+    container.addEventListener('dragend', e => {
+      if (dragged) {
+        dragged.style.opacity = '1'
+        dragged = null
+      }
+    })
+    container.addEventListener('dragover', e => {
+      e.preventDefault()
+      const targetCard = e.target.closest('.model-card')
+      if (dragged && targetCard && dragged !== targetCard) {
+        const bounding = targetCard.getBoundingClientRect()
+        const offset = bounding.y + bounding.height / 2
+        if (e.clientY > offset) {
+          targetCard.after(dragged)
+        } else {
+          targetCard.before(dragged)
+        }
+      }
+    })
+    container.addEventListener('drop', e => {
+      e.preventDefault()
+      if (!dragged) return
+
+      const section = container.closest('[data-provider]')
+      if (!section) return
+      const providerKey = section.dataset.provider
+      const provider = state.config.models.providers[providerKey]
+      if (!provider) return
+
+      // 获取新的顺序
+      const newOrderIds = [...container.querySelectorAll('.model-card')].map(c => c.dataset.modelId)
+
+      pushUndo(state)
+      const oldModels = [...provider.models]
+      provider.models = newOrderIds.map(id => oldModels.find(m => (typeof m === 'string' ? m : m.id) === id))
+
+      // 更新状态不重新渲染以保持列表稳定
+      autoSave(state)
+    })
   })
 
   // 绑定按钮
@@ -389,9 +460,16 @@ function bindProviderButtons(listEl, page, state) {
     if (!provider) return
     const card = btn.closest('.model-card')
 
-    btn.onclick = (e) => {
-      e.stopPropagation()
-      handleAction(action, btn, card, section, providerKey, provider, page, state)
+        // checkbox 改变时不需要阻止冒泡，由 handleAction 内部处理
+    if (btn.type === 'checkbox') {
+      btn.onchange = (e) => {
+        handleAction(action, btn, card, section, providerKey, provider, page, state)
+      }
+    } else {
+      btn.onclick = (e) => {
+        e.stopPropagation()
+        handleAction(action, btn, card, section, providerKey, provider, page, state)
+      }
     }
   })
 }
@@ -814,6 +892,13 @@ async function handleBatchDelete(section, page, state, providerKey) {
 
 // 批量测试：勾选的模型，没勾选则测试全部（记录耗时和状态）
 async function handleBatchTest(section, state, providerKey) {
+  // 如果正在测试，点击则终止
+  if (_batchTestAbort) {
+    _batchTestAbort.abort = true
+    toast('正在终止批量测试...', 'warning')
+    return
+  }
+
   const provider = state.config.models.providers[providerKey]
   const checked = [...section.querySelectorAll('.model-checkbox:checked')]
   const ids = checked.length
@@ -823,11 +908,24 @@ async function handleBatchTest(section, state, providerKey) {
   if (!ids.length) { toast('没有可测试的模型', 'warning'); return }
 
   const batchBtn = section.querySelector('[data-action="batch-test"]')
-  if (batchBtn) { batchBtn.disabled = true; batchBtn.textContent = '测试中...' }
+  const ctrl = { abort: false }
+  _batchTestAbort = ctrl
+  if (batchBtn) {
+    batchBtn.textContent = '终止测试'
+    batchBtn.classList.remove('btn-secondary')
+    batchBtn.classList.add('btn-danger')
+  }
 
+  const page = section.closest('.page')
   let ok = 0, fail = 0
   for (const modelId of ids) {
+    if (ctrl.abort) break
+
     const model = (provider.models || []).find(m => (typeof m === 'string' ? m : m.id) === modelId)
+    // 标记当前正在测试的卡片
+    const card = section.querySelector(`.model-card[data-model-id="${modelId}"]`)
+    if (card) card.style.outline = '2px solid var(--accent)'
+
     const start = Date.now()
     try {
       await api.testModel(provider.baseUrl, provider.apiKey || '', modelId)
@@ -839,7 +937,6 @@ async function handleBatchTest(section, state, providerKey) {
         delete model.testError
       }
       ok++
-      toast(`${modelId} 连通正常 ${(elapsed / 1000).toFixed(1)}s (${ok + fail}/${ids.length})`, 'success')
     } catch (e) {
       const elapsed = Date.now() - start
       if (model && typeof model === 'object') {
@@ -849,18 +946,37 @@ async function handleBatchTest(section, state, providerKey) {
         model.testError = String(e).slice(0, 100)
       }
       fail++
-      toast(`${modelId} 不可用 ${(elapsed / 1000).toFixed(1)}s: ${e}`, 'error')
     }
+
+    // 每测完一个实时刷新卡片
+    if (page) {
+      renderProviders(page, state)
+      renderDefaultBar(page, state)
+    }
+    // 进度 toast
+    const status = model?.testStatus === 'ok' ? '✓' : '✗'
+    const latStr = model?.latency != null ? ` ${(model.latency / 1000).toFixed(1)}s` : ''
+    toast(`${status} ${modelId}${latStr} (${ok + fail}/${ids.length})`, model?.testStatus === 'ok' ? 'success' : 'error')
   }
 
-  if (batchBtn) { batchBtn.disabled = false; batchBtn.textContent = '批量测试' }
-  // 刷新卡片显示最新状态
-  const page = section.closest('.page')
-  if (page) {
-    renderProviders(page, state)
-    renderDefaultBar(page, state)
+  // 恢复按钮
+  _batchTestAbort = null
+  // 重新查找按钮（renderProviders 后 DOM 已更新）
+  const newSection = page?.querySelector(`[data-provider="${providerKey}"]`)
+  const newBtn = newSection?.querySelector('[data-action="batch-test"]')
+  if (newBtn) {
+    newBtn.textContent = '批量测试'
+    newBtn.classList.remove('btn-danger')
+    newBtn.classList.add('btn-secondary')
   }
-  toast(`批量测试完成：${ok} 成功，${fail} 失败`, ok === ids.length ? 'success' : 'warning')
+
+  const aborted = ctrl.abort
+  autoSave(state)
+  if (aborted) {
+    toast(`批量测试已终止：${ok} 成功，${fail} 失败，${ids.length - ok - fail} 跳过`, 'warning')
+  } else {
+    toast(`批量测试完成：${ok} 成功，${fail} 失败`, ok === ids.length ? 'success' : 'warning')
+  }
 }
 
 // 从服务商远程获取模型列表
@@ -998,5 +1114,7 @@ async function testModel(btn, state, providerKey, idx) {
       renderProviders(page, state)
       renderDefaultBar(page, state)
     }
+    // 持久化测试结果
+    autoSave(state)
   }
 }
