@@ -436,6 +436,24 @@ npm install -g @qingchencloud/openclaw-zh --registry https://registry.npmmirror.
 | [ClawApp](https://github.com/qingchencloud/clawapp) | 跨平台移动聊天客户端 |
 | [cftunnel](https://github.com/qingchencloud/cftunnel) | Cloudflare Tunnel 内网穿透工具 |
 
+## 赞助商
+
+感谢以下赞助商对 ClawPanel 项目的支持：
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <a href="https://www.ciyundata.com/cart/goods.htm?id=267" target="_blank">
+        <img src="https://img.shields.io/badge/慈云数据-香港直连2H2G_99元/年-FF6B35?style=for-the-badge&logo=icloud&logoColor=white" alt="慈云数据">
+      </a>
+      <br><br>
+      <sub>慈云数据服务团队于 2020 年成立，专注于基础云计算、游戏云、主题站长等业务</sub>
+      <br>
+      <sub>售前售后服务 24 小时在线值班，强力保证为客户提供优质稳定的网络资源与机房服务</sub>
+    </td>
+  </tr>
+</table>
+
 ## 社区交流
 
 加入社区，交流使用心得、反馈问题、获取最新动态。
