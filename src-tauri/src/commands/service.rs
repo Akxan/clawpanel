@@ -1040,14 +1040,14 @@ pub async fn get_services_status() -> Result<Vec<ServiceStatus>, String> {
 
     let mut results = Vec::new();
 
-    for label in &labels {
+    for label in labels.iter().map(String::as_str) {
         let (running, pid) = check_service_status_for_label(uid, label).await;
 
         results.push(ServiceStatus {
-            label: label.clone(),
+            label: label.to_string(),
             pid,
             running,
-            description: desc_map.get(label.as_str()).unwrap_or(&"").to_string(),
+            description: desc_map.get(label).unwrap_or(&"").to_string(),
             cli_installed,
         });
     }
