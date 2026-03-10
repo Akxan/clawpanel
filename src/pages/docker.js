@@ -332,7 +332,7 @@ function _renderUnitCard(c, showAdopt) {
     </div>
     ${isRunning && (ports.panel || ports.gateway) ? `
       <div class="unit-links">
-        ${ports.panel ? `<a href="http://${host}:${ports.panel}" target="_blank" rel="noopener" class="unit-link panel">${icon('monitor', 12)} 面板 :${ports.panel}</a>` : ''}
+        ${ports.panel ? `<a href="${location.protocol}//${host}:${ports.panel}" target="_blank" rel="noopener" class="unit-link panel">${icon('monitor', 12)} 面板 :${ports.panel}</a>` : ''}
         ${ports.gateway ? `<span class="unit-link gateway" data-action="quick-chat" data-container-id="${esc(c.id)}" data-node-id="${esc(c.nodeId || '')}" data-name="${esc(c.name)}" title="发送测试消息">${icon('zap', 12)} 通讯 :${ports.gateway}</span>` : ''}
       </div>
     ` : ''}
@@ -1474,7 +1474,7 @@ async function showDeployDialog(page, nodeId) {
 
       // 成功页面
       const host = location.hostname || 'localhost'
-      const panelUrl = `http://${host}:${panelPort}`
+      const panelUrl = `${location.protocol}//${host}:${panelPort}`
       const selectedRole = overlay.querySelector('#dd-role')?.value || 'general'
       const roleInfo = MILITARY.roles[selectedRole] || MILITARY.roles.general
 
@@ -1488,7 +1488,7 @@ async function showDeployDialog(page, nodeId) {
             <button class="btn" data-dismiss>关闭</button>
           </div>
           <div style="margin-top:16px;font-size:11px;color:var(--text-tertiary);font-family:var(--font-mono)">
-            Panel: ${panelUrl} · Gateway: ws://${host}:${gatewayPort}
+            Panel: ${panelUrl} · Gateway: ${location.protocol === 'https:' ? 'wss' : 'ws'}://${host}:${gatewayPort}
           </div>
         </div>
       `
@@ -1543,18 +1543,18 @@ async function showInspectDialog(page, nodeId, containerId) {
         <div class="inspect-section">
           <div class="inspect-section-title">指挥通道</div>
           <div class="inspect-links">
-            ${ports.panel ? `<a href="http://${host}:${ports.panel}" target="_blank" rel="noopener" class="inspect-link-card">
+            ${ports.panel ? `<a href="${location.protocol}//${host}:${ports.panel}" target="_blank" rel="noopener" class="inspect-link-card">
               <span class="inspect-link-icon">${icon('monitor', 20)}</span>
               <span class="inspect-link-text">
                 <strong>指挥台</strong>
-                <span>http://${host}:${ports.panel}</span>
+                <span>${location.protocol}//${host}:${ports.panel}</span>
               </span>
             </a>` : ''}
             ${ports.gateway ? `<div class="inspect-link-card" style="cursor:default;opacity:0.85">
               <span class="inspect-link-icon">${icon('zap', 20)}</span>
               <span class="inspect-link-text">
                 <strong>通讯链路 (WebSocket)</strong>
-                <span>ws://${host}:${ports.gateway}/ws</span>
+                <span>${location.protocol === 'https:' ? 'wss' : 'ws'}://${host}:${ports.gateway}/ws</span>
               </span>
             </div>` : ''}
           </div>

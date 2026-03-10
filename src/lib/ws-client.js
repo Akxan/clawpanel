@@ -66,11 +66,13 @@ export class WsClient {
     return () => { this._readyCallbacks = this._readyCallbacks.filter(cb => cb !== fn) }
   }
 
-  connect(host, token) {
+  connect(host, token, opts = {}) {
     this._intentionalClose = false
     this._autoPairAttempts = 0
     this._token = token || ''
-    this._url = `ws://${host}/ws?token=${encodeURIComponent(this._token)}`
+    // 自动检测协议：如果页面通过 HTTPS 加载（反代场景），使用 wss://
+    const proto = opts.secure ?? (typeof location !== 'undefined' && location.protocol === 'https:') ? 'wss' : 'ws'
+    this._url = `${proto}://${host}/ws?token=${encodeURIComponent(this._token)}`
     this._doConnect()
   }
 

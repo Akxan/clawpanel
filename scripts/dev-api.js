@@ -153,7 +153,7 @@ function parseCookies(req) {
   const obj = {}
   ;(req.headers.cookie || '').split(';').forEach(pair => {
     const [k, ...v] = pair.trim().split('=')
-    if (k) obj[k] = decodeURIComponent(v.join('='))
+    if (k) try { obj[k] = decodeURIComponent(v.join('=')) } catch (_) { obj[k] = v.join('=') }
   })
   return obj
 }

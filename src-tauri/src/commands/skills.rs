@@ -1,6 +1,10 @@
 use crate::utils::openclaw_command_async;
 use serde_json::Value;
 
+#[cfg(target_os = "windows")]
+#[allow(unused_imports)]
+use std::os::windows::process::CommandExt;
+
 /// 列出所有 Skills 及其状态（openclaw skills list --json）
 #[tauri::command]
 pub async fn skills_list() -> Result<Value, String> {
@@ -104,11 +108,11 @@ pub async fn skills_install_dep(kind: String, spec: Value) -> Result<Value, Stri
         other => return Err(format!("不支持的安装类型: {other}")),
     };
 
-    let output = tokio::process::Command::new(&program)
-        .args(&args)
-        .env("PATH", &path_env)
-        .output()
-        .await
+    let mut cmd = tokio::process::Command::new(&program);
+    cmd.args(&args).env("PATH", &path_env);
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000);
+    let output = cmd.output().await
         .map_err(|e| format!("执行 {program} 失败: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -140,12 +144,13 @@ pub async fn skills_clawhub_install(slug: String) -> Result<Value, String> {
         std::fs::create_dir_all(&skills_dir).map_err(|e| format!("创建 skills 目录失败: {e}"))?;
     }
 
-    let output = tokio::process::Command::new("npx")
-        .args(["-y", "clawhub", "install", &slug])
+    let mut cmd = tokio::process::Command::new("npx");
+    cmd.args(["-y", "clawhub", "install", &slug])
         .env("PATH", &path_env)
-        .current_dir(&home)
-        .output()
-        .await
+        .current_dir(&home);
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000);
+    let output = cmd.output().await
         .map_err(|e| format!("执行 clawhub 失败: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -171,11 +176,12 @@ pub async fn skills_clawhub_search(query: String) -> Result<Value, String> {
     }
 
     let path_env = super::enhanced_path();
-    let output = tokio::process::Command::new("npx")
-        .args(["-y", "clawhub", "search", &q])
-        .env("PATH", &path_env)
-        .output()
-        .await
+    let mut cmd = tokio::process::Command::new("npx");
+    cmd.args(["-y", "clawhub", "search", &q])
+        .env("PATH", &path_env);
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000);
+    let output = cmd.output().await
         .map_err(|e| format!("执行 clawhub 失败: {e}"))?;
 
     if !output.status.success() {

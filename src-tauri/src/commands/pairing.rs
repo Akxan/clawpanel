@@ -115,14 +115,14 @@ fn patch_gateway_origins() {
         return;
     };
 
-    // 仅允许 Tauri 应用 + 本地开发服务器的 origin
-    let origins = serde_json::json!([
-        "tauri://localhost",
-        "https://tauri.localhost",
-        "http://tauri.localhost",
-        "http://localhost:1420",
-        "http://127.0.0.1:1420"
-    ]);
+    // Tauri 应用 + 本地开发服务器必须存在的 origin
+    let required: Vec<String> = vec![
+        "tauri://localhost".into(),
+        "https://tauri.localhost".into(),
+        "http://tauri.localhost".into(),
+        "http://localhost:1420".into(),
+        "http://127.0.0.1:1420".into(),
+    ];
 
     if let Some(obj) = config.as_object_mut() {
         let gateway = obj
@@ -133,7 +133,26 @@ fn patch_gateway_origins() {
                 .entry("controlUi")
                 .or_insert_with(|| serde_json::json!({}));
             if let Some(cui) = control_ui.as_object_mut() {
-                cui.insert("allowedOrigins".to_string(), origins);
+                // 合并：保留用户已有的 origin，追加缺失的 Tauri origin
+                let existing: Vec<String> = cui
+                    .get("allowedOrigins")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|s| s.as_str().map(String::from))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let mut merged = existing;
+                for r in &required {
+                    if !merged.iter().any(|e| e == r) {
+                        merged.push(r.clone());
+                    }
+                }
+                cui.insert(
+                    "allowedOrigins".to_string(),
+                    serde_json::json!(merged),
+                );
             }
         }
     }

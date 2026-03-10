@@ -484,7 +484,6 @@ function switchSession(newKey) {
   clearMessages()
   loadHistory()
   refreshSessionList()
-  _page?.querySelector('#chat-sidebar')?.classList.remove('open')
 }
 
 async function showNewSessionDialog() {

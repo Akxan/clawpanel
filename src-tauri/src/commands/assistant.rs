@@ -2,6 +2,9 @@ use base64::{engine::general_purpose, Engine as _};
 /// AI 助手工具命令
 /// 提供终端执行、文件读写、目录列表等能力
 /// 仅在用户主动开启工具后由 AI 调用
+#[cfg(target_os = "windows")]
+#[allow(unused_imports)]
+use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 
 /// 审计日志：记录 AI 助手的敏感操作（exec / read / write）
@@ -267,18 +270,23 @@ pub async fn assistant_system_info() -> Result<String, String> {
 /// 列出运行中的进程（按名称过滤）
 #[tauri::command]
 pub async fn assistant_list_processes(filter: Option<String>) -> Result<String, String> {
-    let output = if cfg!(target_os = "windows") {
-        tokio::process::Command::new("powershell")
+    let output;
+    #[cfg(target_os = "windows")]
+    {
+        output = tokio::process::Command::new("powershell")
             .args(["-NoProfile", "-Command",
                 "Get-Process | Select-Object Id, ProcessName, CPU, WorkingSet64 | Sort-Object ProcessName | Format-Table -AutoSize | Out-String -Width 200"])
+            .creation_flags(0x08000000)
             .output()
-            .await
-    } else {
-        tokio::process::Command::new("ps")
+            .await;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        output = tokio::process::Command::new("ps")
             .args(["aux", "--sort=-%mem"])
             .output()
-            .await
-    };
+            .await;
+    }
 
     let output = output.map_err(|e| format!("获取进程列表失败: {e}"))?;
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -331,18 +339,23 @@ pub async fn assistant_check_port(port: u16) -> Result<String, String> {
 }
 
 async fn get_port_process(port: u16) -> String {
-    let output = if cfg!(target_os = "windows") {
-        tokio::process::Command::new("powershell")
+    let output;
+    #[cfg(target_os = "windows")]
+    {
+        output = tokio::process::Command::new("powershell")
             .args(["-NoProfile", "-Command",
                 &format!("Get-NetTCPConnection -LocalPort {} -ErrorAction SilentlyContinue | Select-Object OwningProcess | ForEach-Object {{ (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName }}", port)])
+            .creation_flags(0x08000000)
             .output()
-            .await
-    } else {
-        tokio::process::Command::new("lsof")
+            .await;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        output = tokio::process::Command::new("lsof")
             .args(["-i", &format!(":{}", port), "-t"])
             .output()
-            .await
-    };
+            .await;
+    }
 
     match output {
         Ok(o) => {
