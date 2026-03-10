@@ -23,9 +23,7 @@ const QTCOOL = {
   site: 'https://gpt.qt.cool/',
   usageUrl: 'https://gpt.qt.cool/user?key=',
   models: [
-    { id: 'gpt-5.4', name: 'GPT-5.4', hot: true },
-    { id: 'gpt-5.3-codex', name: 'GPT-5.3 Codex' },
-    { id: 'gpt-5.2-codex', name: 'GPT-5.2 Codex' },
+    { id: 'gpt-5.2-codex', name: 'GPT-5.2 Codex', hot: true },
     { id: 'gpt-5.2', name: 'GPT-5.2' },
     { id: 'gpt-5.1-codex-max', name: 'GPT-5.1 Codex Max' },
     { id: 'gpt-5.1-codex-mini', name: 'GPT-5.1 Codex Mini' },

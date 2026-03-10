@@ -225,7 +225,7 @@ ClawPanel 项目组正式开放公益 AI 接口测试计划，降低用户接入
 ### 核心信息
 - **GPT-AI 网关地址**：https://gpt.qt.cool/v1
 - **支持接口**：/v1/chat/completions、/v1/responses（OpenAI 兼容）
-- **支持模型**：OpenAI 全系列（GPT-5、GPT-5.1、GPT-5.2、GPT-5.3-codex、GPT-5.4 等）
+- **支持模型**：OpenAI 全系列（GPT-5、GPT-5.1、GPT-5.2 及其 Codex 变体）
 - **费用**：测试期间所有调用成本由项目组内部承担，用户无需付费
 - **限制**：无请求限制
 - **用户后台**：https://gpt.qt.cool/user（查看用量、提交工单）
