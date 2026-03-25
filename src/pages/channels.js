@@ -1382,6 +1382,13 @@ async function openConfigDialog(pid, page, state, accountId) {
         try {
           btn.disabled = true
           btn.textContent = t('channels.executingShort')
+          if (logBox) {
+            const hint = document.createElement('div')
+            hint.style.cssText = 'color:var(--text-tertiary);font-style:italic'
+            hint.id = 'action-loading-hint'
+            hint.textContent = t('channels.downloadingPlugin') || '正在下载，请稍候（首次安装可能需要几分钟）...'
+            logBox.appendChild(hint)
+          }
           const _qrBuf = []
           let _qrDone = false
           const _flushQr = () => {
@@ -1448,6 +1455,8 @@ async function openConfigDialog(pid, page, state, accountId) {
                 `
                 logBox.appendChild(wrap)
               } else if (msg.trim()) {
+                const loadingHint = logBox.querySelector('#action-loading-hint')
+                if (loadingHint) loadingHint.remove()
                 const div = document.createElement('div')
                 div.textContent = msg
                 logBox.appendChild(div)
