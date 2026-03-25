@@ -1788,15 +1788,8 @@ async function openConfigDialog(pid, page, state, accountId) {
           }
         })
 
-        // 自动 pin 插件版本（仅 install 动作）
-        let actionVer2 = null
-        if (actionId === 'install') {
-          try {
-            const vInfo = await api.getVersionInfo()
-            if (vInfo?.current) actionVer2 = vInfo.current.split('-')[0]
-          } catch {}
-        }
-        const output = await api.runChannelAction(pid, actionId, actionVer2)
+        // 微信/QQ 等第三方插件版本号独立，不 pin；run_channel_action 的 version 参数仅用于 npx 包名
+        const output = await api.runChannelAction(pid, actionId, null)
         toast(t('channels.actionDone'), 'success')
         if (logBox && output && !String(output).includes(logBox.textContent)) {
           logBox.textContent += (logBox.textContent ? '\n' : '') + String(output)
@@ -1954,15 +1947,17 @@ async function openConfigDialog(pid, page, state, accountId) {
           } catch {}
 
           try {
-            // 自动 pin 插件版本到用户的 OpenClaw 版本，避免 minHostVersion 不兼容
+            // 自动 pin 插件版本：仅 @openclaw/ 前缀的包与 OpenClaw 版本号同步，其他包（微信 CLI、QQ Bot）版本号独立
             let pluginVersion = null
-            try {
-              const vInfo = await api.getVersionInfo()
-              if (vInfo?.current) pluginVersion = vInfo.current.split('-')[0]
-            } catch {}
+            if (pluginPackage && pluginPackage.startsWith('@openclaw/')) {
+              try {
+                const vInfo = await api.getVersionInfo()
+                if (vInfo?.current) pluginVersion = vInfo.current.split('-')[0]
+              } catch {}
+            }
             // QQ 必须用专用安装命令：官方包目录为 openclaw-qqbot，与 install_channel_plugin(…, "qqbot") 的备份路径不一致
             if (pid === 'qqbot') {
-              await api.installQqbotPlugin(pluginVersion)
+              await api.installQqbotPlugin(null)
             } else {
               await api.installChannelPlugin(pluginPackage, pluginId, pluginVersion)
             }

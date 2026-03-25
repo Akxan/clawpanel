@@ -598,10 +598,10 @@ function showGuardianRecovery() {
   banner.innerHTML = `
     <div class="gw-banner-content" style="flex-wrap:wrap;gap:8px">
       <span class="gw-banner-icon">${statusIcon('warn', 16)}</span>
-      <span>Gateway 反复启动失败，可能配置有误</span>
-      <button class="btn btn-sm btn-primary" id="btn-gw-recover-fix" style="margin-left:auto">一键修复</button>
-      <button class="btn btn-sm btn-secondary" id="btn-gw-recover-restart">重试启动</button>
-      <a class="btn btn-sm btn-ghost" href="#/logs">查看日志</a>
+      <span>${t('dashboard.guardianFailed')}</span>
+      <button class="btn btn-sm btn-primary" id="btn-gw-recover-fix" style="margin-left:auto">${t('dashboard.autoFix')}</button>
+      <button class="btn btn-sm btn-secondary" id="btn-gw-recover-restart">${t('dashboard.retryStart')}</button>
+      <a class="btn btn-sm btn-ghost" href="#/logs">${t('sidebar.logs')}</a>
     </div>
   `
   banner.querySelector('#btn-gw-recover-fix')?.addEventListener('click', async (e) => {

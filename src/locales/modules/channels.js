@@ -304,4 +304,6 @@ export default {
   pluginDetected: _('已检测到插件，无需重复安装，本次仅更新配置', 'Plugin detected, no need to reinstall; only updating config', '已檢測到外掛，無需重複安裝，本次僅更新設定'),
   writingConfig: _('写入配置...', 'Writing config...', '写入設定...'),
   configSaved: _('{platform} 配置已保存，Gateway 正在重载', '{platform} config saved, Gateway is reloading', '{platform} 設定已儲存，Gateway 正在重載'),
+  pluginIncompatible: _('插件版本不兼容', 'Plugin version incompatible', '外掛版本不相容', 'プラグインバージョン非互換', '플러그인 버전 호환되지 않음', 'Phiên bản plugin không tương thích', 'Versión de plugin incompatible', 'Versão do plugin incompatível', 'Несовместимая версия плагина', 'Version de plugin incompatible', 'Plugin-Version inkompatibel'),
+  reinstallCompatible: _('重新安装兼容版本', 'Reinstall compatible version', '重新安裝相容版本', '互換バージョンを再インストール', '호환 버전 재설치', 'Cài đặt lại phiên bản tương thích', 'Reinstalar versión compatible', 'Reinstalar versão compatível', 'Переустановить совместимую версию', 'Réinstaller la version compatible', 'Kompatible Version neu installieren'),
 }
